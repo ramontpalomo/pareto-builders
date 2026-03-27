@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import BuilderCard from '@/components/BuilderCard'
 import { createClient } from '@/lib/supabase'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, SlidersHorizontal, X, Sparkles, Loader2 } from 'lucide-react'
 import type { BuilderProfile } from '@/lib/types'
 
 const SPECIALTIES = ['LLM & Agentes', 'RAG & Search', 'Automação', 'Computer Vision', 'NLP', 'MLOps', 'Sales AI', 'FinTech AI', 'RPA', 'Data Science']
@@ -33,6 +33,30 @@ function BuildersContent() {
   const [availability, setAvailability] = useState('')
   const [onlyFma, setOnlyFma] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [semanticMode, setSemanticMode] = useState(false)
+  const [semanticQuery, setSemanticQuery] = useState('')
+  const [semanticSearching, setSemanticSearching] = useState(false)
+  const [semanticIntent, setSemanticIntent] = useState('')
+
+  async function doSemanticSearch() {
+    if (!semanticQuery.trim()) return
+    setSemanticSearching(true)
+    try {
+      const res = await fetch('/api/semantic-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: semanticQuery }),
+      })
+      const filters = await res.json()
+      setSemanticIntent(filters.intencao || '')
+      // Aplicar filtros retornados pela IA
+      if (filters.especialidades?.length > 0) setSelectedSpecialty(filters.especialidades[0])
+      if (filters.fma_preferido) setOnlyFma(true)
+      if (filters.disponibilidade === 'disponivel') setAvailability('available')
+      if (filters.palavras_chave?.length > 0) setSearch(filters.palavras_chave.join(' '))
+    } catch { /* ignore */ }
+    setSemanticSearching(false)
+  }
 
   useEffect(() => {
     async function fetchBuilders() {
@@ -71,6 +95,36 @@ function BuildersContent() {
 
       <div className="max-w-6xl mx-auto px-6 py-8 w-full flex-1">
         {/* Search + Filter bar */}
+        {/* Toggle busca semântica */}
+        <div className="flex items-center gap-3 mb-4">
+          <button onClick={() => { setSemanticMode(!semanticMode); setSemanticIntent('') }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 500, padding: '6px 14px', borderRadius: 2, border: '0.5px solid', borderColor: semanticMode ? '#141310' : '#C2C1BC', background: semanticMode ? '#141310' : 'transparent', color: semanticMode ? '#C8F230' : '#8A8985', cursor: 'pointer' }}>
+            <Sparkles size={12} /> Busca Inteligente IA
+          </button>
+          {semanticMode && <p style={{ fontSize: 11, fontWeight: 300, color: '#8A8985' }}>Descreva o que você precisa em linguagem natural</p>}
+        </div>
+
+        {semanticMode && (
+          <div style={{ marginBottom: 16 }}>
+            <div className="flex gap-2">
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Sparkles size={14} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#C8F230' }} />
+                <input type="text" value={semanticQuery} onChange={e => setSemanticQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doSemanticSearch()}
+                  placeholder="Ex: Preciso de alguém para automatizar meu RH com IA..."
+                  style={{ width: '100%', fontFamily: "'DM Sans', sans-serif", fontSize: 13, background: '#141310', border: '0.5px solid #252420', borderRadius: 3, padding: '12px 14px 12px 40px', outline: 'none', color: '#FFFFFF' }} />
+              </div>
+              <button onClick={doSemanticSearch} disabled={semanticSearching || !semanticQuery.trim()}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#C8F230', color: '#141310', fontSize: 11, fontWeight: 600, padding: '12px 20px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                {semanticSearching ? <Loader2 size={13} /> : <Search size={13} />} Buscar
+              </button>
+            </div>
+            {semanticIntent && (
+              <p style={{ fontSize: 11, fontWeight: 300, color: '#4A4946', marginTop: 8 }}>IA entendeu: <em>{semanticIntent}</em></p>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-3 mb-6 flex-wrap">
           <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
             <Search size={14} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#8A8985' }} />

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { User, Briefcase, ShieldCheck, BarChart2, LogOut, Eye, Plus, Bot, Trash2, ExternalLink } from 'lucide-react'
+import { User, Briefcase, ShieldCheck, BarChart2, LogOut, Eye, Plus, Bot, Trash2, ExternalLink, Sparkles, TrendingUp, Upload, X, Loader2 } from 'lucide-react'
 import type { BuilderProfile, Certification, Project } from '@/lib/types'
 
 type Tab = 'overview' | 'profile' | 'projects' | 'certifications'
@@ -17,6 +17,23 @@ export default function BuilderDashboard() {
   const [projects, setProjects] = useState<Project[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // AI Score de Perfil
+  const [scoreResult, setScoreResult] = useState<{ score: number; nivel: string; resumo: string; sugestoes: { prioridade: string; categoria: string; acao: string; impacto: string }[] } | null>(null)
+  const [loadingScore, setLoadingScore] = useState(false)
+
+  // Gerador de Case Study
+  const [showCaseStudyModal, setShowCaseStudyModal] = useState(false)
+  const [caseStudyDesc, setCaseStudyDesc] = useState('')
+  const [caseStudyResult, setCaseStudyResult] = useState<{ title: string; description: string; tecnologias: string[]; resultados: string; tags: string[] } | null>(null)
+  const [loadingCaseStudy, setLoadingCaseStudy] = useState(false)
+
+  // Análise de TCC
+  const [tccText, setTccText] = useState('')
+  const [tccTitle, setTccTitle] = useState('')
+  const [tccResult, setTccResult] = useState<{ resumo_executivo: string; competencias_tecnicas: string[]; tecnologias_identificadas: string[]; nivel_tecnico: string; certificacao_gerada: { nome: string; descricao: string } } | null>(null)
+  const [loadingTcc, setLoadingTcc] = useState(false)
+  const [showTccInput, setShowTccInput] = useState(false)
 
   // Profile form state
   const [headline, setHeadline] = useState('')
@@ -105,6 +122,101 @@ export default function BuilderDashboard() {
     router.push('/')
   }
 
+  async function analyzeProfile() {
+    if (!builder) return
+    setLoadingScore(true)
+    try {
+      const supabase = createClient()
+      const { data: projs } = await supabase.from('projects').select('*').eq('builder_id', builder.id)
+      const { data: certsData } = await supabase.from('certifications').select('*').eq('builder_id', builder.id)
+      const res = await fetch('/api/profile-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: builder, projects: projs || [], certifications: certsData || [] }),
+      })
+      const data = await res.json()
+      setScoreResult(data)
+      // Salva score no banco
+      if (data.score) {
+        await supabase.from('builder_profiles').update({ profile_score: data.score }).eq('id', builder.id)
+        setBuilder(prev => prev ? { ...prev, profile_score: data.score } : prev)
+      }
+    } catch { /* ignore */ }
+    setLoadingScore(false)
+  }
+
+  async function generateCaseStudy() {
+    if (!caseStudyDesc.trim()) return
+    setLoadingCaseStudy(true)
+    try {
+      const res = await fetch('/api/case-study', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: caseStudyDesc, builderName: builder?.full_name }),
+      })
+      const data = await res.json()
+      setCaseStudyResult(data)
+    } catch { /* ignore */ }
+    setLoadingCaseStudy(false)
+  }
+
+  async function saveCaseStudyAsProject() {
+    if (!builder || !caseStudyResult) return
+    const supabase = createClient()
+    const { data } = await supabase.from('projects').insert({
+      builder_id: builder.id,
+      title: caseStudyResult.title,
+      description: caseStudyResult.description,
+      tags: caseStudyResult.tags || [],
+      results: caseStudyResult.resultados,
+    }).select().single()
+    if (data) setProjects(prev => [...prev, data])
+    setShowCaseStudyModal(false)
+    setCaseStudyDesc('')
+    setCaseStudyResult(null)
+    setTab('projects')
+  }
+
+  async function analyzeTcc() {
+    if (!tccText.trim()) return
+    setLoadingTcc(true)
+    try {
+      const res = await fetch('/api/tcc-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tccText, tccTitle }),
+      })
+      const data = await res.json()
+      setTccResult(data)
+    } catch { /* ignore */ }
+    setLoadingTcc(false)
+  }
+
+  async function saveTccCertification() {
+    if (!builder || !tccResult) return
+    const supabase = createClient()
+    const { data } = await supabase.from('certifications').insert({
+      builder_id: builder.id,
+      name: tccResult.certificacao_gerada.nome,
+      issuer: 'Faculdade Mar Atlântico — FMA',
+      is_fma: true,
+      verified: false,
+    }).select().single()
+    if (data) setCerts(prev => [...prev, data])
+    setShowTccInput(false)
+    setTccResult(null)
+    setTccText('')
+  }
+
+  const DEMAND_RADAR = [
+    { specialty: 'LLM & Agentes', demand: 94, trend: '+18%' },
+    { specialty: 'RAG & Search', demand: 87, trend: '+24%' },
+    { specialty: 'Automação', demand: 82, trend: '+12%' },
+    { specialty: 'Chatbots', demand: 78, trend: '+9%' },
+    { specialty: 'MLOps', demand: 71, trend: '+31%' },
+    { specialty: 'NLP', demand: 65, trend: '+7%' },
+  ]
+
   const tabs: { id: Tab; icon: typeof User; label: string }[] = [
     { id: 'overview', icon: BarChart2, label: 'Visão Geral' },
     { id: 'profile', icon: User, label: 'Meu Perfil' },
@@ -192,6 +304,74 @@ export default function BuilderDashboard() {
                   <p style={{ fontSize: 11, fontWeight: 300, color: '#8A8985', marginTop: 6, letterSpacing: '0.02em' }}>{label}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Score de Perfil com IA */}
+            <div style={{ background: '#FFFFFF', border: '0.5px solid #E0DFDB', borderRadius: 12, padding: '28px', marginBottom: 20 }}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A8985', marginBottom: 4 }}>IA · Score de Perfil</p>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: '#141310' }}>Análise inteligente do seu perfil</p>
+                </div>
+                <button onClick={analyzeProfile} disabled={loadingScore} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#141310', color: '#C8F230', fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', padding: '10px 18px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                  {loadingScore ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={13} />}
+                  {loadingScore ? 'Analisando...' : 'Analisar com IA'}
+                </button>
+              </div>
+              {scoreResult ? (
+                <div>
+                  <div className="flex items-end gap-3 mb-4">
+                    <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, fontWeight: 700, color: '#141310', letterSpacing: '-2px', lineHeight: 1 }}>{scoreResult.score}</span>
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontSize: 16, color: '#8A8985' }}>/100</span>
+                      <p style={{ fontSize: 12, fontWeight: 500, color: scoreResult.score >= 80 ? '#A8CF1A' : scoreResult.score >= 60 ? '#C8F230' : '#8A8985', marginTop: 2 }}>{scoreResult.nivel}</p>
+                    </div>
+                  </div>
+                  <div style={{ height: 6, background: '#EFEEEB', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
+                    <div style={{ height: '100%', width: `${scoreResult.score}%`, background: '#C8F230', borderRadius: 3, transition: 'width 1s ease' }} />
+                  </div>
+                  <p style={{ fontSize: 13, fontWeight: 300, color: '#4A4946', marginBottom: 16 }}>{scoreResult.resumo}</p>
+                  <div className="flex flex-col gap-3">
+                    {scoreResult.sugestoes?.map((s, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 10, padding: '12px 14px', borderRadius: 6, background: s.prioridade === 'Alta' ? '#FFF8F0' : '#F5F5F3', border: `0.5px solid ${s.prioridade === 'Alta' ? '#F0D0A0' : '#E0DFDB'}` }}>
+                        <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 2, background: s.prioridade === 'Alta' ? '#E8A030' : s.prioridade === 'Media' ? '#C8F230' : '#EFEEEB', color: s.prioridade === 'Alta' ? '#FFFFFF' : '#141310', flexShrink: 0, alignSelf: 'flex-start', marginTop: 1 }}>{s.prioridade}</span>
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 500, color: '#141310', marginBottom: 2 }}>{s.acao}</p>
+                          <p style={{ fontSize: 11, fontWeight: 300, color: '#8A8985' }}>{s.impacto}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, fontWeight: 300, color: '#8A8985' }}>Clique em "Analisar com IA" para receber uma análise detalhada do seu perfil com sugestões de melhoria.</p>
+              )}
+            </div>
+
+            {/* Radar de Demanda */}
+            <div style={{ background: '#FFFFFF', border: '0.5px solid #E0DFDB', borderRadius: 12, padding: '28px', marginBottom: 20 }}>
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp size={15} color="#C8F230" />
+                <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A8985' }}>Radar de Demanda · Mercado</p>
+              </div>
+              <p style={{ fontSize: 13, fontWeight: 300, color: '#4A4946', marginBottom: 20 }}>Especialidades mais buscadas pelas empresas no marketplace agora:</p>
+              <div className="flex flex-col gap-3">
+                {DEMAND_RADAR.map(({ specialty, demand, trend }) => {
+                  const isYours = builder?.specialties?.some(s => s.toLowerCase().includes(specialty.toLowerCase().split(' ')[0]))
+                  return (
+                    <div key={specialty} className="flex items-center gap-3">
+                      <div style={{ width: 130, flexShrink: 0 }}>
+                        <p style={{ fontSize: 12, fontWeight: isYours ? 500 : 300, color: isYours ? '#141310' : '#4A4946' }}>{specialty}</p>
+                      </div>
+                      <div style={{ flex: 1, height: 6, background: '#EFEEEB', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${demand}%`, background: isYours ? '#C8F230' : '#E0DFDB', borderRadius: 3 }} />
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: '#A8CF1A', width: 40, textAlign: 'right', flexShrink: 0 }}>{trend}</span>
+                      {isYours && <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#C8F230', color: '#141310', padding: '2px 6px', borderRadius: 2, flexShrink: 0 }}>Seu</span>}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
             {/* Checklist de perfil */}
@@ -287,9 +467,14 @@ export default function BuilderDashboard() {
                 <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8A8985', marginBottom: 6 }}>Portfólio</p>
                 <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: '#141310', letterSpacing: '-0.8px' }}>Meus Projetos</h1>
               </div>
-              <button onClick={() => setAddingProject(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#141310', color: '#C8F230', fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', padding: '10px 18px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
-                <Plus size={14} /> Adicionar projeto
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setShowCaseStudyModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#EFEEEB', color: '#141310', fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', padding: '10px 18px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                  <Sparkles size={14} /> Gerar com IA
+                </button>
+                <button onClick={() => setAddingProject(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#141310', color: '#C8F230', fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', padding: '10px 18px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                  <Plus size={14} /> Adicionar projeto
+                </button>
+              </div>
             </div>
 
             {/* Add project form */}
@@ -366,6 +551,56 @@ export default function BuilderDashboard() {
               </div>
             </div>
 
+            {/* Análise de TCC */}
+            <div style={{ background: '#FFFFFF', border: '0.5px solid #E0DFDB', borderRadius: 12, padding: '28px', marginBottom: 20 }}>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A8985', marginBottom: 4 }}>IA · Análise de TCC</p>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: '#141310' }}>Extraia competências do seu TCC</p>
+                </div>
+                <button onClick={() => setShowTccInput(!showTccInput)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#EFEEEB', color: '#141310', fontSize: 11, fontWeight: 500, padding: '9px 16px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                  <Upload size={13} /> Analisar TCC
+                </button>
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 300, color: '#8A8985', lineHeight: 1.6 }}>Cole o resumo ou trecho do seu TCC e a IA extrai as competências técnicas e cria uma certificação automaticamente.</p>
+
+              {showTccInput && (
+                <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8A8985', marginBottom: 6 }}>Título do TCC</label>
+                    <input type="text" value={tccTitle} onChange={e => setTccTitle(e.target.value)} placeholder="Ex: Implementação de RAG para análise de contratos jurídicos"
+                      style={{ width: '100%', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#141310', background: '#F5F5F3', border: '0.5px solid #C2C1BC', borderRadius: 3, padding: '10px 14px', outline: 'none' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8A8985', marginBottom: 6 }}>Resumo ou trecho do TCC</label>
+                    <textarea value={tccText} onChange={e => setTccText(e.target.value)} rows={5} placeholder="Cole aqui o resumo, abstract ou introdução do seu TCC..."
+                      style={{ width: '100%', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#141310', background: '#F5F5F3', border: '0.5px solid #C2C1BC', borderRadius: 3, padding: '10px 14px', outline: 'none', resize: 'vertical' }} />
+                  </div>
+                  <button onClick={analyzeTcc} disabled={loadingTcc || !tccText.trim()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#141310', color: '#C8F230', fontSize: 11, fontWeight: 500, padding: '11px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                    {loadingTcc ? <><Loader2 size={13} /> Analisando...</> : <><Sparkles size={13} /> Analisar com IA</>}
+                  </button>
+
+                  {tccResult && (
+                    <div style={{ background: '#F5F5F3', borderRadius: 8, padding: '20px' }}>
+                      <p style={{ fontSize: 12, fontWeight: 500, color: '#141310', marginBottom: 8 }}>Análise concluída</p>
+                      <p style={{ fontSize: 12, fontWeight: 300, color: '#4A4946', lineHeight: 1.65, marginBottom: 12 }}>{tccResult.resumo_executivo}</p>
+                      <div className="flex flex-wrap gap-1 mb-12">
+                        {tccResult.competencias_tecnicas?.map(c => <span key={c} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 2, background: '#C8F230', color: '#141310', fontWeight: 500 }}>{c}</span>)}
+                      </div>
+                      <div style={{ background: '#141310', borderRadius: 6, padding: '14px 16px', marginBottom: 12 }}>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: '#C8F230', marginBottom: 4 }}>Certificação a ser criada:</p>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: '#FFFFFF' }}>{tccResult.certificacao_gerada?.nome}</p>
+                        <p style={{ fontSize: 11, fontWeight: 300, color: '#8A8985', marginTop: 2 }}>{tccResult.certificacao_gerada?.descricao}</p>
+                      </div>
+                      <button onClick={saveTccCertification} style={{ background: '#C8F230', color: '#141310', fontSize: 11, fontWeight: 600, padding: '10px 20px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                        Adicionar certificação ao perfil
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {certs.length === 0 ? (
               <div style={{ background: '#FFFFFF', border: '0.5px solid #E0DFDB', borderRadius: 12, padding: '48px', textAlign: 'center' }}>
                 <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: '#141310', marginBottom: 8 }}>Nenhuma certificação ainda</p>
@@ -390,6 +625,59 @@ export default function BuilderDashboard() {
           </div>
         )}
       </main>
+
+      {/* MODAL: Gerador de Case Study com IA */}
+      {showCaseStudyModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(20,19,16,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, border: '0.5px solid #E0DFDB', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: '32px' }}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A8985', marginBottom: 4 }}>IA · Gerador</p>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: '#141310', letterSpacing: '-0.5px' }}>Gerar Case Study</h2>
+              </div>
+              <button onClick={() => { setShowCaseStudyModal(false); setCaseStudyResult(null); setCaseStudyDesc('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8A8985' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {!caseStudyResult ? (
+              <div className="flex flex-col gap-4">
+                <p style={{ fontSize: 13, fontWeight: 300, color: '#4A4946', lineHeight: 1.65 }}>
+                  Descreva o projeto que você implementou de forma livre. A IA vai transformar em um case study profissional formatado.
+                </p>
+                <textarea value={caseStudyDesc} onChange={e => setCaseStudyDesc(e.target.value)} rows={7}
+                  placeholder="Ex: Fiz um chatbot para uma imobiliária usando GPT-4 e LangChain. O cliente tinha problema com muitas ligações no suporte. Integrei com o CRM deles, o bot responde perguntas sobre imóveis, agenda visitas e qualifica leads. Reduziu 70% das ligações e o time de vendas foca só nos leads qualificados..."
+                  style={{ width: '100%', fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#141310', background: '#F5F5F3', border: '0.5px solid #C2C1BC', borderRadius: 3, padding: '14px', outline: 'none', resize: 'vertical' }} />
+                <button onClick={generateCaseStudy} disabled={loadingCaseStudy || !caseStudyDesc.trim()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#141310', color: '#C8F230', fontSize: 12, fontWeight: 500, letterSpacing: '0.06em', padding: '13px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                  {loadingCaseStudy ? <><Loader2 size={14} /> Gerando case study...</> : <><Sparkles size={14} /> Gerar case study com IA</>}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div style={{ background: '#F5F5F3', borderRadius: 10, padding: '20px' }}>
+                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: '#141310', letterSpacing: '-0.3px', marginBottom: 8 }}>{caseStudyResult.title}</h3>
+                  <p style={{ fontSize: 13, fontWeight: 300, color: '#4A4946', lineHeight: 1.65, marginBottom: 12 }}>{caseStudyResult.description}</p>
+                  {caseStudyResult.resultados && (
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#A8CF1A', marginBottom: 12 }}>✓ {caseStudyResult.resultados}</p>
+                  )}
+                  <div className="flex flex-wrap gap-1">
+                    {caseStudyResult.tags?.map(t => <span key={t} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 2, background: '#EFEEEB', color: '#8A8985', fontWeight: 500 }}>{t}</span>)}
+                  </div>
+                </div>
+                <p style={{ fontSize: 12, fontWeight: 300, color: '#8A8985' }}>Você pode editar este case study depois de salvar. Quer adicionar ao seu portfólio?</p>
+                <div className="flex gap-3">
+                  <button onClick={saveCaseStudyAsProject} style={{ flex: 1, background: '#141310', color: '#C8F230', fontSize: 11, fontWeight: 500, padding: '11px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                    Salvar no portfólio
+                  </button>
+                  <button onClick={() => setCaseStudyResult(null)} style={{ background: '#EFEEEB', color: '#141310', fontSize: 11, fontWeight: 400, padding: '11px 20px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                    Refazer
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

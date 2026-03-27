@@ -43,25 +43,36 @@ export default function BuilderProfilePage() {
   ])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [cloneConfig, setCloneConfig] = useState<{ personality?: string; context?: string; can_pricing?: boolean; greeting?: string } | null>(null)
 
   useEffect(() => {
-    async function fetch() {
+    async function fetchData() {
       const supabase = createClient()
       const { data } = await supabase.from('builder_profiles').select('*').eq('slug', slug).single()
       if (data) {
         setBuilder(data)
-        const { data: certsData } = await supabase.from('certifications').select('*').eq('builder_id', data.id)
-        const { data: projData } = await supabase.from('projects').select('*').eq('builder_id', data.id)
-        setCerts(certsData || [])
-        setProjects(projData || [])
+        const [certsRes, projRes, cloneRes] = await Promise.all([
+          supabase.from('certifications').select('*').eq('builder_id', data.id),
+          supabase.from('projects').select('*').eq('builder_id', data.id),
+          supabase.from('ai_clones').select('*').eq('builder_id', data.id).single(),
+        ])
+        setCerts(certsRes.data || [])
+        setProjects(projRes.data || [])
+        if (cloneRes.data) {
+          setCloneConfig(cloneRes.data)
+          setMessages([{ role: 'assistant', content: cloneRes.data.greeting || `Olá! Sou o assistente de IA de ${data.full_name}. Como posso ajudar?` }])
+        } else {
+          setMessages([{ role: 'assistant', content: `Olá! Sou o assistente de IA de ${data.full_name}. Posso te contar sobre projetos, especialidades e disponibilidade. O que gostaria de saber?` }])
+        }
       } else {
         setBuilder(MOCK_BUILDER)
         setCerts(MOCK_CERTS)
         setProjects(MOCK_PROJECTS)
+        setMessages([{ role: 'assistant', content: `Olá! Sou o assistente de IA de ${MOCK_BUILDER.full_name}. Como posso ajudar com seu projeto de IA?` }])
       }
       setLoading(false)
     }
-    fetch()
+    fetchData()
   }, [slug])
 
   async function sendMessage() {
@@ -69,18 +80,27 @@ export default function BuilderProfilePage() {
     const userMsg = input.trim()
     setInput('')
     setSending(true)
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }])
-    // Simulação de resposta do clone (substituir por chamada real à API de IA)
-    await new Promise(r => setTimeout(r, 1200))
-    const responses: Record<string, string> = {
-      default: `Ótima pergunta! ${builder?.full_name || 'O Builder'} tem experiência sólida nessa área. Recomendo agendar uma conversa direta para discutir os detalhes do seu projeto.`,
+    const newMessages = [...messages, { role: 'user' as const, content: userMsg }]
+    setMessages(newMessages)
+
+    try {
+      const res = await fetch('/api/clone-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMsg,
+          builderName: builder?.full_name,
+          personality: cloneConfig?.personality || '',
+          context: cloneConfig?.context || `Builder especializado em ${builder?.specialties?.join(', ')}. ${builder?.years_experience} anos de experiência.`,
+          canPricing: cloneConfig?.can_pricing ?? false,
+          history: messages,
+        }),
+      })
+      const data = await res.json()
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'Desculpe, não consegui processar sua mensagem.' }])
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Erro ao conectar com o assistente. Tente novamente.' }])
     }
-    const lower = userMsg.toLowerCase()
-    let reply = responses.default
-    if (lower.includes('valor') || lower.includes('preço') || lower.includes('custo')) reply = 'Os valores variam conforme a complexidade e duração do projeto. Posso conectar você com o Builder para uma proposta personalizada. Quer que eu agende uma reunião?'
-    else if (lower.includes('disponív') || lower.includes('livre')) reply = `${builder?.full_name} está ${builder?.availability === 'available' ? 'disponível para novos projetos agora' : 'ocupado no momento, mas pode avaliar sua demanda'}. Quer deixar seu contato?`
-    else if (lower.includes('projeto') || lower.includes('experiência')) reply = `${builder?.full_name} já implementou mais de 30 projetos de IA para empresas de diferentes setores. Os destaques estão na seção de projetos do perfil.`
-    setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     setSending(false)
   }
 
