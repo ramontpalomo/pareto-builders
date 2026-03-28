@@ -28,6 +28,11 @@ export default function BuilderDashboard() {
   const [caseStudyResult, setCaseStudyResult] = useState<{ title: string; description: string; tecnologias: string[]; resultados: string; tags: string[] } | null>(null)
   const [loadingCaseStudy, setLoadingCaseStudy] = useState(false)
 
+  // Radar de Demanda (dados dinâmicos da API)
+  const [radarData, setRadarData] = useState<{ nome: string; demanda: number; tendencia: string; variacao: string }[]>([])
+  const [radarInsights, setRadarInsights] = useState<{ setor_mais_ativo?: string; proximo_boom?: string }>({})
+  const [loadingRadar, setLoadingRadar] = useState(false)
+
   // Análise de TCC
   const [tccText, setTccText] = useState('')
   const [tccTitle, setTccTitle] = useState('')
@@ -208,14 +213,16 @@ export default function BuilderDashboard() {
     setTccText('')
   }
 
-  const DEMAND_RADAR = [
-    { specialty: 'LLM & Agentes', demand: 94, trend: '+18%' },
-    { specialty: 'RAG & Search', demand: 87, trend: '+24%' },
-    { specialty: 'Automação', demand: 82, trend: '+12%' },
-    { specialty: 'Chatbots', demand: 78, trend: '+9%' },
-    { specialty: 'MLOps', demand: 71, trend: '+31%' },
-    { specialty: 'NLP', demand: 65, trend: '+7%' },
-  ]
+  async function fetchRadar() {
+    setLoadingRadar(true)
+    try {
+      const res = await fetch('/api/demand-radar')
+      const data = await res.json()
+      if (data.habilidades) setRadarData(data.habilidades)
+      setRadarInsights({ setor_mais_ativo: data.setor_mais_ativo, proximo_boom: data.proximo_boom })
+    } catch { /* usa dados padrão */ }
+    setLoadingRadar(false)
+  }
 
   const tabs: { id: Tab; icon: typeof User; label: string }[] = [
     { id: 'overview', icon: BarChart2, label: 'Visão Geral' },
@@ -350,28 +357,60 @@ export default function BuilderDashboard() {
 
             {/* Radar de Demanda */}
             <div style={{ background: '#FFFFFF', border: '0.5px solid #E0DFDB', borderRadius: 12, padding: '28px', marginBottom: 20 }}>
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp size={15} color="#C8F230" />
-                <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A8985' }}>Radar de Demanda · Mercado</p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={15} color="#C8F230" />
+                  <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A8985' }}>Radar de Demanda · Mercado ao Vivo</p>
+                </div>
+                <button onClick={fetchRadar} disabled={loadingRadar} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', background: '#141310', color: '#C8F230', border: 'none', borderRadius: 2, padding: '6px 12px', cursor: 'pointer' }}>
+                  {loadingRadar ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <TrendingUp size={11} />}
+                  {loadingRadar ? 'Atualizando...' : 'Atualizar'}
+                </button>
               </div>
-              <p style={{ fontSize: 13, fontWeight: 300, color: '#4A4946', marginBottom: 20 }}>Especialidades mais buscadas pelas empresas no marketplace agora:</p>
-              <div className="flex flex-col gap-3">
-                {DEMAND_RADAR.map(({ specialty, demand, trend }) => {
-                  const isYours = builder?.specialties?.some(s => s.toLowerCase().includes(specialty.toLowerCase().split(' ')[0]))
-                  return (
-                    <div key={specialty} className="flex items-center gap-3">
-                      <div style={{ width: 130, flexShrink: 0 }}>
-                        <p style={{ fontSize: 12, fontWeight: isYours ? 500 : 300, color: isYours ? '#141310' : '#4A4946' }}>{specialty}</p>
-                      </div>
-                      <div style={{ flex: 1, height: 6, background: '#EFEEEB', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${demand}%`, background: isYours ? '#C8F230' : '#E0DFDB', borderRadius: 3 }} />
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 500, color: '#A8CF1A', width: 40, textAlign: 'right', flexShrink: 0 }}>{trend}</span>
-                      {isYours && <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#C8F230', color: '#141310', padding: '2px 6px', borderRadius: 2, flexShrink: 0 }}>Seu</span>}
+              {radarData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <p style={{ fontSize: 13, fontWeight: 300, color: '#8A8985', marginBottom: 12 }}>Veja quais especialidades estão em alta no mercado agora.</p>
+                  <button onClick={fetchRadar} disabled={loadingRadar} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#141310', color: '#C8F230', fontSize: 11, fontWeight: 500, padding: '10px 18px', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
+                    <TrendingUp size={13} /> Ver Radar de Demanda
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-3 mb-4">
+                    {radarData.map(({ nome, demanda, variacao, tendencia }) => {
+                      const isYours = builder?.specialties?.some(s => s.toLowerCase().includes(nome.toLowerCase().split(' ')[0]))
+                      return (
+                        <div key={nome} className="flex items-center gap-3">
+                          <div style={{ width: 130, flexShrink: 0 }}>
+                            <p style={{ fontSize: 12, fontWeight: isYours ? 600 : 300, color: isYours ? '#141310' : '#4A4946' }}>{nome}</p>
+                          </div>
+                          <div style={{ flex: 1, height: 6, background: '#EFEEEB', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${demanda}%`, background: isYours ? '#C8F230' : tendencia === 'alta' ? '#D4E8A0' : '#E0DFDB', borderRadius: 3, transition: 'width 0.8s ease' }} />
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: tendencia === 'alta' ? '#A8CF1A' : tendencia === 'queda' ? '#E08080' : '#8A8985', width: 44, textAlign: 'right', flexShrink: 0 }}>{variacao}</span>
+                          {isYours && <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#C8F230', color: '#141310', padding: '2px 6px', borderRadius: 2, flexShrink: 0 }}>Você</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {(radarInsights.setor_mais_ativo || radarInsights.proximo_boom) && (
+                    <div style={{ borderTop: '0.5px solid #EFEEEB', paddingTop: 14, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      {radarInsights.setor_mais_ativo && (
+                        <div style={{ background: '#F5F5F3', borderRadius: 4, padding: '8px 12px' }}>
+                          <p style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8A8985', marginBottom: 2 }}>Setor mais ativo</p>
+                          <p style={{ fontSize: 12, fontWeight: 500, color: '#141310' }}>{radarInsights.setor_mais_ativo}</p>
+                        </div>
+                      )}
+                      {radarInsights.proximo_boom && (
+                        <div style={{ background: '#F5F5F3', borderRadius: 4, padding: '8px 12px' }}>
+                          <p style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8A8985', marginBottom: 2 }}>Próxima onda</p>
+                          <p style={{ fontSize: 12, fontWeight: 500, color: '#141310' }}>{radarInsights.proximo_boom}</p>
+                        </div>
+                      )}
                     </div>
-                  )
-                })}
-              </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Checklist de perfil */}

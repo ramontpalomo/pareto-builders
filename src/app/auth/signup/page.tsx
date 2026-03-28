@@ -2,12 +2,11 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { ArrowLeft, Building2, Wrench, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Building2, Wrench, Eye, EyeOff, Mail } from 'lucide-react'
 
 function SignupForm() {
-  const router = useRouter()
   const params = useSearchParams()
   const defaultRole = params.get('role') === 'company' ? 'company' : 'builder'
 
@@ -18,6 +17,7 @@ function SignupForm() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -26,10 +26,33 @@ function SignupForm() {
 
     const supabase = createClient()
 
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+    // Generate slug for builders
+    const slug = fullName.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim().replace(/\s+/g, '-')
+      + '-' + Math.random().toString(36).slice(2, 6)
+
+    // Pass role, name, and slug via metadata — trigger will auto-create profiles
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          role,
+          full_name: fullName,
+          slug: role === 'builder' ? slug : undefined,
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
 
     if (signUpError) {
-      setError(signUpError.message)
+      if (signUpError.message.includes('already registered')) {
+        setError('Este e-mail já está cadastrado. Tente fazer login.')
+      } else {
+        setError(signUpError.message)
+      }
       setLoading(false)
       return
     }
@@ -40,42 +63,53 @@ function SignupForm() {
       return
     }
 
-    // Cria o profile
-    await supabase.from('profiles').insert({
-      user_id: data.user.id,
-      role,
-      full_name: fullName,
-      email,
-    })
-
-    // Se builder, cria o builder profile com slug básico
-    if (role === 'builder') {
-      const slug = fullName.toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\s]/g, '')
-        .trim().replace(/\s+/g, '-')
-        + '-' + Math.random().toString(36).slice(2, 6)
-
-      await supabase.from('builder_profiles').insert({
-        user_id: data.user.id,
-        slug,
-        full_name: fullName,
-        headline: '',
-        bio: '',
-        specialties: [],
-        years_experience: 0,
-        availability: 'available',
-        fma_verified: false,
-        profile_score: 10,
-      })
-      router.push('/dashboard/builder')
+    // Check if email confirmation is required
+    if (data.session) {
+      // Email confirmation disabled — redirect directly
+      window.location.href = role === 'builder' ? '/dashboard/builder' : '/dashboard/company'
     } else {
-      await supabase.from('company_profiles').insert({
-        user_id: data.user.id,
-        company_name: fullName,
-      })
-      router.push('/dashboard/company')
+      // Email confirmation required — show success message
+      setSuccess(true)
+      setLoading(false)
     }
+  }
+
+  if (success) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#F5F5F3', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '20px 32px', borderBottom: '0.5px solid #E0DFDB', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link href="/" className="flex items-center gap-2">
+            <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 900, fontSize: 18, color: '#141310' }}>Pareto</span>
+            <span style={{ background: '#C8F230', color: '#141310', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 2 }}>Builders</span>
+          </Link>
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E0DFDB', borderRadius: 16, padding: '48px 40px', width: '100%', maxWidth: 460, textAlign: 'center' }}>
+            <div style={{ width: 56, height: 56, background: '#C8F230', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              <Mail size={24} color="#141310" />
+            </div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 700, color: '#141310', marginBottom: 12 }}>
+              Verifique seu e-mail
+            </h2>
+            <p style={{ fontSize: 14, color: '#8A8985', lineHeight: 1.6, marginBottom: 8 }}>
+              Enviamos um link de confirmação para:
+            </p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#141310', marginBottom: 24 }}>{email}</p>
+            <p style={{ fontSize: 13, color: '#8A8985', lineHeight: 1.6, marginBottom: 32 }}>
+              Clique no link do e-mail para ativar sua conta e acessar o dashboard.
+              Verifique também a caixa de spam.
+            </p>
+            <Link href="/auth/login" style={{
+              display: 'inline-block', background: '#141310', color: '#C8F230',
+              fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase',
+              padding: '14px 32px', borderRadius: 3, textDecoration: 'none'
+            }}>
+              Ir para o login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -182,7 +216,10 @@ function SignupForm() {
             </button>
 
             <p style={{ fontSize: 11, fontWeight: 300, color: '#C2C1BC', textAlign: 'center' }}>
-              Ao criar conta você concorda com os Termos de Uso e Política de Privacidade.
+              Ao criar conta você concorda com os{' '}
+              <Link href="/termos" style={{ color: '#8A8985', textDecoration: 'underline' }}>Termos de Uso</Link>
+              {' '}e{' '}
+              <Link href="/privacidade" style={{ color: '#8A8985', textDecoration: 'underline' }}>Política de Privacidade</Link>.
             </p>
           </form>
 

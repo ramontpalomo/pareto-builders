@@ -34,6 +34,12 @@ export default function Navbar() {
             className="hover:text-[#141310] transition-colors">
             Para Empresas
           </Link>
+          <Link href="/demo" style={{
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+            color: '#141310', background: '#C8F230', padding: '4px 10px', borderRadius: 2
+          }}>
+            Demo
+          </Link>
         </div>
 
         {/* Desktop CTAs */}

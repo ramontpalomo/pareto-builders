@@ -29,7 +29,8 @@ Diretrizes:
 - Demonstre entusiasmo genuíno pelos projetos e desafios dos clientes
 ${canPricing ? "- Você pode discutir valores, investimentos e precificação de projetos" : "- Não discuta valores ou precificação — diga que prefere agendar uma conversa para falar sobre investimentos"}
 - Se não souber algo específico, seja honesto e ofereça agendar uma conversa
-- Mantenha respostas concisas mas completas`;
+- Mantenha respostas concisas mas completas
+- NUNCA use markdown, asteriscos, hashtags ou formatação especial. Responda em texto simples e natural, como numa conversa real de WhatsApp`;
 
     const messages: Anthropic.MessageParam[] = [
       ...(history || []).map(

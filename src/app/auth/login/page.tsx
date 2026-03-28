@@ -23,12 +23,17 @@ export default function LoginPage() {
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
-      setError('E-mail ou senha incorretos. Tente novamente.')
+      if (authError.message.includes('Email not confirmed')) {
+        setError('E-mail ainda não confirmado. Verifique sua caixa de entrada e clique no link que enviamos.')
+      } else if (authError.message.includes('Invalid login credentials')) {
+        setError('E-mail ou senha incorretos. Tente novamente.')
+      } else {
+        setError(authError.message)
+      }
       setLoading(false)
       return
     }
 
-    // Busca o papel do usuário
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -39,6 +44,8 @@ export default function LoginPage() {
       router.push('/dashboard/builder')
     } else if (profile?.role === 'company') {
       router.push('/dashboard/company')
+    } else if (profile?.role === 'admin') {
+      router.push('/dashboard/admin')
     } else {
       router.push('/')
     }
