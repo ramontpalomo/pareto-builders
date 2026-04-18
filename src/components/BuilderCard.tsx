@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Star } from 'lucide-react'
+import { MapPin, Sparkles } from 'lucide-react'
 
 interface BuilderCardProps {
   slug: string
@@ -11,6 +11,8 @@ interface BuilderCardProps {
   availability: 'available' | 'busy' | 'unavailable'
   fma_verified: boolean
   years_experience: number
+  ai_motivo?: string
+  ai_relevancia?: number
 }
 
 const availabilityLabel = {
@@ -21,18 +23,43 @@ const availabilityLabel = {
 
 export default function BuilderCard({
   slug, full_name, headline, avatar_url, location,
-  specialties, availability, fma_verified, years_experience
+  specialties, availability, fma_verified, years_experience,
+  ai_motivo, ai_relevancia,
 }: BuilderCardProps) {
-  const avail = availabilityLabel[availability]
+  const avail = availabilityLabel[availability] || availabilityLabel.unavailable
 
   return (
     <Link href={`/builders/${slug}`} className="block group">
       <div style={{
-        background: '#FFFFFF', border: '0.5px solid #E0DFDB',
-        borderRadius: 12, padding: '28px 24px',
-        transition: 'border-color 0.2s, box-shadow 0.2s'
+        background: '#FFFFFF',
+        border: ai_motivo ? '0.5px solid #C8F230' : '0.5px solid #E0DFDB',
+        borderTop: ai_motivo ? '2px solid #C8F230' : '0.5px solid #E0DFDB',
+        borderRadius: 12,
+        padding: '24px',
+        transition: 'border-color 0.2s, box-shadow 0.2s',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
       }}
-        className="group-hover:border-[#8A8985] group-hover:shadow-sm h-full flex flex-col">
+        className="group-hover:border-[#8A8985] group-hover:shadow-sm">
+
+        {/* AI motivo strip */}
+        {ai_motivo && (
+          <div style={{
+            marginBottom: 14,
+            padding: '6px 10px',
+            background: '#F5FDE8',
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 6,
+          }}>
+            <Sparkles size={9} style={{ color: '#5A8A00', flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#3A6600', letterSpacing: '0.03em', lineHeight: 1.4 }}>
+              {ai_motivo}
+            </p>
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-start gap-3 mb-4">
@@ -44,7 +71,14 @@ export default function BuilderCard({
             display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>
             {avatar_url ? (
-              <img src={avatar_url} alt={full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img
+                src={avatar_url}
+                alt={full_name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none'
+                }}
+              />
             ) : (
               <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: '#8A8985' }}>
                 {full_name.charAt(0)}
@@ -106,6 +140,17 @@ export default function BuilderCard({
             }}>+{specialties.length - 4}</span>
           )}
         </div>
+
+        {/* AI relevance score */}
+        {ai_relevancia !== undefined && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: '0.5px solid #EFEEEB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 300, color: '#8A8985' }}>match IA</span>
+            <span style={{
+              fontSize: 11, fontWeight: 700,
+              color: ai_relevancia >= 80 ? '#3A6600' : ai_relevancia >= 60 ? '#7A6000' : '#8A8985'
+            }}>{ai_relevancia}%</span>
+          </div>
+        )}
       </div>
     </Link>
   )

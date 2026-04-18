@@ -16,74 +16,143 @@ type DemoUser = {
   full_name: string
   slug?: string
   bio?: string
+  headline?: string
   specialties?: string[]
-  hourly_rate?: number
+  hourly_rate_min?: number
+  hourly_rate_max?: number
   location?: string
   fma_grade?: string
+  years_experience?: number
+  avatar_url?: string
   company_name?: string
   industry?: string
   company_size?: string
 }
 
 const DEMO_USERS: DemoUser[] = [
-  // BUILDERS
+  // ── BUILDERS ──────────────────────────────────────────────────────────────
   {
     email: 'lucas.mendonca@pareto-demo.io', password: 'Demo@2026', role: 'builder',
     full_name: 'Lucas Mendonça', slug: 'lucas-mendonca',
-    bio: 'Senior AI Engineer especializado em LLMs e agentes autônomos. Ex-Google, ex-Nubank.',
-    specialties: ['LLM & Agentes', 'RAG & Search', 'Automação'],
-    hourly_rate: 450, location: 'São Paulo, SP', fma_grade: 'A',
+    headline: 'Senior AI Engineer | LLMs & Agentes Autônomos',
+    bio: 'Senior AI Engineer com 8 anos de experiência. Ex-Google, ex-Nubank. Especialista em LLMs, agentes autônomos e arquiteturas RAG em escala. Já entreguei soluções para fintechs, healthtechs e varejo.',
+    specialties: ['LLM & Agentes', 'RAG & Search', 'Automação', 'MLOps'],
+    hourly_rate_min: 400, hourly_rate_max: 500,
+    location: 'São Paulo, SP', fma_grade: 'A', years_experience: 8,
+    avatar_url: 'https://randomuser.me/api/portraits/men/32.jpg',
   },
   {
     email: 'marina.oliveira@pareto-demo.io', password: 'Demo@2026', role: 'builder',
     full_name: 'Marina Oliveira', slug: 'marina-oliveira',
-    bio: 'AI Product Engineer com foco em RAG corporativo e search semântica.',
-    specialties: ['RAG & Search', 'Vector Databases', 'LLM & Agentes'],
-    hourly_rate: 380, location: 'Rio de Janeiro, RJ', fma_grade: 'A',
+    headline: 'AI Product Engineer | RAG Corporativo',
+    bio: 'AI Product Engineer focada em RAG corporativo e busca semântica. Construo sistemas de conhecimento para empresas que precisam extrair valor de documentos internos.',
+    specialties: ['RAG & Search', 'Vector Databases', 'LLM & Agentes', 'Python'],
+    hourly_rate_min: 340, hourly_rate_max: 420,
+    location: 'Rio de Janeiro, RJ', fma_grade: 'A', years_experience: 6,
+    avatar_url: 'https://randomuser.me/api/portraits/women/44.jpg',
   },
   {
     email: 'carlos.santos@pareto-demo.io', password: 'Demo@2026', role: 'builder',
     full_name: 'Carlos Santos', slug: 'carlos-santos',
-    bio: 'Especialista em automação de processos com IA para finanças e jurídico.',
-    specialties: ['Automação', 'LLM & Agentes', 'OCR & Documentos'],
-    hourly_rate: 320, location: 'Belo Horizonte, MG', fma_grade: 'B',
+    headline: 'Automation Engineer | IA para Finanças e Jurídico',
+    bio: 'Especialista em automação de processos com IA para os setores financeiro e jurídico. Experiência com OCR avançado, extração estruturada de documentos e agentes que reduzem trabalho manual repetitivo.',
+    specialties: ['Automação', 'LLM & Agentes', 'OCR & Documentos', 'Python'],
+    hourly_rate_min: 280, hourly_rate_max: 360,
+    location: 'Belo Horizonte, MG', fma_grade: 'B', years_experience: 5,
+    avatar_url: 'https://randomuser.me/api/portraits/men/43.jpg',
   },
   {
     email: 'juliana.ferreira@pareto-demo.io', password: 'Demo@2026', role: 'builder',
     full_name: 'Juliana Ferreira', slug: 'juliana-ferreira',
-    bio: 'Data Scientist sênior com foco em ML aplicado e predição.',
-    specialties: ['Machine Learning', 'Análise Preditiva', 'Python'],
-    hourly_rate: 400, location: 'São Paulo, SP', fma_grade: 'A',
+    headline: 'Senior Data Scientist | ML & Predição',
+    bio: 'Data Scientist sênior com foco em ML aplicado e análise preditiva. Desenho modelos end-to-end: da coleta ao deploy com monitoramento.',
+    specialties: ['Machine Learning', 'Análise Preditiva', 'Python', 'MLOps'],
+    hourly_rate_min: 360, hourly_rate_max: 440,
+    location: 'São Paulo, SP', fma_grade: 'A', years_experience: 7,
+    avatar_url: 'https://randomuser.me/api/portraits/women/65.jpg',
   },
   {
     email: 'rafael.costa@pareto-demo.io', password: 'Demo@2026', role: 'builder',
     full_name: 'Rafael Costa', slug: 'rafael-costa',
-    bio: 'Fullstack + AI. Construo MVPs com Next.js, Supabase e Claude/OpenAI.',
-    specialties: ['LLM & Agentes', 'Fullstack Next.js', 'Supabase'],
-    hourly_rate: 280, location: 'Porto Alegre, RS', fma_grade: 'B',
+    headline: 'Fullstack + AI | MVPs com Next.js e Claude',
+    bio: 'Fullstack + AI. Construo MVPs rápidos com Next.js, Supabase e APIs de LLMs (Claude, OpenAI). Ideal para startups que precisam validar ideias com IA embutida.',
+    specialties: ['LLM & Agentes', 'Fullstack Next.js', 'Supabase', 'TypeScript'],
+    hourly_rate_min: 240, hourly_rate_max: 320,
+    location: 'Porto Alegre, RS', fma_grade: 'B', years_experience: 4,
+    avatar_url: 'https://randomuser.me/api/portraits/men/75.jpg',
   },
   {
     email: 'andre.ribeiro@pareto-demo.io', password: 'Demo@2026', role: 'builder',
     full_name: 'André Ribeiro', slug: 'andre-ribeiro',
-    bio: 'Computer Vision e IA para varejo, manufatura e agricultura.',
-    specialties: ['Computer Vision', 'Edge AI', 'IoT'],
-    hourly_rate: 420, location: 'Campinas, SP', fma_grade: 'A',
+    headline: 'Computer Vision Engineer | Edge AI & IoT',
+    bio: 'Computer Vision e IA para varejo, manufatura e agricultura. Experiência com deploy em Edge (Jetson, Coral) e integração IoT em chão de fábrica.',
+    specialties: ['Computer Vision', 'Edge AI', 'IoT', 'Python'],
+    hourly_rate_min: 380, hourly_rate_max: 460,
+    location: 'Campinas, SP', fma_grade: 'A', years_experience: 9,
+    avatar_url: 'https://randomuser.me/api/portraits/men/22.jpg',
   },
   {
     email: 'sofia.lima@pareto-demo.io', password: 'Demo@2026', role: 'builder',
     full_name: 'Sofia Lima', slug: 'sofia-lima',
-    bio: 'AI para marketing e growth. Copy automatizada, análise de audiência.',
-    specialties: ['LLM & Agentes', 'Marketing AI', 'Automação'],
-    hourly_rate: 260, location: 'Florianópolis, SC', fma_grade: 'B',
+    headline: 'AI Marketing Engineer | Growth Automation',
+    bio: 'AI para marketing e growth. Copy automatizada, análise de audiência, personalização em escala. Integro IA ao stack de marketing existente (HubSpot, RD, Meta Ads).',
+    specialties: ['LLM & Agentes', 'Marketing AI', 'Automação', 'Analytics'],
+    hourly_rate_min: 220, hourly_rate_max: 300,
+    location: 'Florianópolis, SC', fma_grade: 'B', years_experience: 4,
+    avatar_url: 'https://randomuser.me/api/portraits/women/82.jpg',
   },
   {
     email: 'pedro.alves@pareto-demo.io', password: 'Demo@2026', role: 'builder',
     full_name: 'Pedro Alves', slug: 'pedro-alves',
-    bio: 'AI Infrastructure Engineer. MLOps, escala de LLMs, fine-tuning.',
-    specialties: ['MLOps', 'Infraestrutura', 'Fine-tuning'],
-    hourly_rate: 500, location: 'Remoto', fma_grade: 'A',
+    headline: 'AI Infrastructure Engineer | MLOps & Fine-tuning',
+    bio: 'AI Infrastructure Engineer. MLOps, escala de LLMs self-hosted, fine-tuning de modelos open-source. Trabalho com empresas que precisam IA on-prem ou dedicated cloud.',
+    specialties: ['MLOps', 'Infraestrutura', 'Fine-tuning', 'Kubernetes'],
+    hourly_rate_min: 450, hourly_rate_max: 550,
+    location: 'Remoto', fma_grade: 'A', years_experience: 10,
+    avatar_url: 'https://randomuser.me/api/portraits/men/91.jpg',
   },
-  // COMPANIES
+  // Novos builders
+  {
+    email: 'thiago.barbosa@pareto-demo.io', password: 'Demo@2026', role: 'builder',
+    full_name: 'Thiago Barbosa', slug: 'thiago-barbosa',
+    headline: 'NLP Engineer | Sales AI & CRM Inteligente',
+    bio: 'Especialista em NLP aplicado a vendas e CRM. Construo pipelines de qualificação de leads com IA, análise de sentimento em ligações e CRMs conversacionais.',
+    specialties: ['NLP', 'Sales AI', 'FinTech AI', 'Python'],
+    hourly_rate_min: 300, hourly_rate_max: 380,
+    location: 'Recife, PE', fma_grade: 'B', years_experience: 5,
+    avatar_url: 'https://randomuser.me/api/portraits/men/15.jpg',
+  },
+  {
+    email: 'patricia.nunes@pareto-demo.io', password: 'Demo@2026', role: 'builder',
+    full_name: 'Patrícia Nunes', slug: 'patricia-nunes',
+    headline: 'Senior MLOps | Modelos em Produção em Escala',
+    bio: 'MLOps sênior com foco em estabilidade, custo e governança de modelos em produção. Já operacionalizei modelos para mais de 10M de requisições/dia.',
+    specialties: ['MLOps', 'Data Science', 'Python', 'Infraestrutura'],
+    hourly_rate_min: 420, hourly_rate_max: 520,
+    location: 'São Paulo, SP', fma_grade: 'A', years_experience: 8,
+    avatar_url: 'https://randomuser.me/api/portraits/women/35.jpg',
+  },
+  {
+    email: 'diego.azevedo@pareto-demo.io', password: 'Demo@2026', role: 'builder',
+    full_name: 'Diego Azevedo', slug: 'diego-azevedo',
+    headline: 'RPA + IA | Automação de Processos Corporativos',
+    bio: 'Automação de processos com RPA (UiPath, Automation Anywhere) combinada com IA para casos onde robôs clássicos não chegam. Foco em back-office financeiro e RH.',
+    specialties: ['RPA', 'Automação', 'NLP', 'Python'],
+    hourly_rate_min: 220, hourly_rate_max: 300,
+    location: 'Curitiba, PR', fma_grade: 'B', years_experience: 6,
+    avatar_url: 'https://randomuser.me/api/portraits/men/51.jpg',
+  },
+  {
+    email: 'fernanda.alves@pareto-demo.io', password: 'Demo@2026', role: 'builder',
+    full_name: 'Fernanda Alves', slug: 'fernanda-alves',
+    headline: 'Fine-tuning & NLP | Modelos sob Medida',
+    bio: 'Especialista em fine-tuning de LLMs para domínios específicos. Crio modelos proprietários para empresas que precisam de respostas precisas em verticais como saúde, jurídico e financeiro.',
+    specialties: ['Fine-tuning', 'NLP', 'LLM & Agentes', 'Python'],
+    hourly_rate_min: 380, hourly_rate_max: 480,
+    location: 'Brasília, DF', fma_grade: 'A', years_experience: 7,
+    avatar_url: 'https://randomuser.me/api/portraits/women/38.jpg',
+  },
+  // ── COMPANIES ─────────────────────────────────────────────────────────────
   {
     email: 'techvision@pareto-demo.io', password: 'Demo@2026', role: 'company',
     full_name: 'TechVision Corp',
@@ -117,7 +186,7 @@ export async function POST(req: Request) {
 
   for (const u of DEMO_USERS) {
     try {
-      // 1) Buscar user_id via profiles (mais confiável que listUsers durante boot)
+      // 1) Buscar user_id via profiles
       const { data: profile } = await adminClient
         .from('profiles')
         .select('user_id')
@@ -127,7 +196,6 @@ export async function POST(req: Request) {
       let userId: string | undefined = profile?.user_id
 
       if (userId) {
-        // Atualizar senha + metadata via Admin API
         const { error: updErr } = await adminClient.auth.admin.updateUserById(userId, {
           password: u.password,
           email_confirm: true,
@@ -138,7 +206,6 @@ export async function POST(req: Request) {
           continue
         }
       } else {
-        // Criar usuário (caso não exista nem em profiles nem em auth)
         const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
           email: u.email,
           password: u.password,
@@ -174,13 +241,19 @@ export async function POST(req: Request) {
         const { error: bpErr } = await adminClient.from('builder_profiles').upsert({
           user_id: userId,
           slug: u.slug,
+          full_name: u.full_name,
+          headline: u.headline,
           bio: u.bio,
           specialties: u.specialties,
-          hourly_rate: u.hourly_rate,
+          hourly_rate_min: u.hourly_rate_min,
+          hourly_rate_max: u.hourly_rate_max,
           location: u.location,
           fma_grade: u.fma_grade,
+          fma_verified: !!u.fma_grade,
+          years_experience: u.years_experience,
           availability: 'available',
-          full_name: u.full_name,
+          avatar_url: u.avatar_url,
+          profile_score: u.fma_grade === 'A' ? 90 : 78,
         }, { onConflict: 'user_id' })
         if (bpErr) {
           results.push({ email: u.email, step: 'builder_profiles.upsert', error: bpErr.message })
@@ -191,7 +264,7 @@ export async function POST(req: Request) {
           user_id: userId,
           company_name: u.company_name,
           industry: u.industry,
-          company_size: u.company_size,
+          size: u.company_size,
         }, { onConflict: 'user_id' })
         if (cpErr) {
           results.push({ email: u.email, step: 'company_profiles.upsert', error: cpErr.message })
