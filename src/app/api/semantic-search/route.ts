@@ -26,17 +26,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ intencao: "Nenhum builder encontrado", builders: [] });
     }
 
-    // 2. Preparar dados dos builders para o prompt
+    // 2. Preparar dados dos builders para o prompt (usar slug como chave — LLMs reproduzem slugs com fidelidade)
     const buildersJson = JSON.stringify(
       builders.map((b) => ({
-        id: b.id,
+        slug: b.slug,          // chave identificadora — legível, reproduzível
         name: b.full_name,
         headline: b.headline,
         bio: (b.bio || "").slice(0, 400),
         specialties: b.specialties || [],
         years_experience: b.years_experience,
         fma_verified: b.fma_verified,
-        fma_grade: b.fma_grade,
         availability: b.availability,
         location: b.location,
         rate:
@@ -66,12 +65,12 @@ Analise cada builder considerando:
 - Disponibilidade: builders disponíveis têm prioridade
 - Experiência adequada ao nível de complexidade implícito na necessidade
 
-Retorne APENAS JSON válido:
+Retorne APENAS JSON válido (sem markdown, sem texto fora do JSON):
 {
   "intencao": "<resumo claro do que o usuário precisa — 1 frase em português>",
   "builders_rankeados": [
     {
-      "id": "<builder_id exato>",
+      "slug": "<slug exato do builder, ex: lucas-mendonca>",
       "relevancia": <número inteiro 0-100>,
       "motivo": "<1 frase curta explicando por que este builder é adequado para ESTA necessidade específica>"
     }
@@ -93,15 +92,15 @@ Inclua apenas builders com relevância >= 35. Ordene do maior para o menor. Seja
       ? JSON.parse(jsonMatch[0])
       : { intencao: query, builders_rankeados: [] };
 
-    // 4. Merge scores da IA com os dados completos dos builders
-    const builderMap = new Map(builders.map((b) => [b.id, b]));
+    // 4. Merge scores da IA com os dados completos dos builders (lookup por slug)
+    const builderMap = new Map(builders.map((b) => [b.slug, b]));
     const ranked = (result.builders_rankeados || [])
       .filter(
-        (r: { id: string; relevancia: number; motivo: string }) =>
-          builderMap.has(r.id)
+        (r: { slug: string; relevancia: number; motivo: string }) =>
+          builderMap.has(r.slug)
       )
-      .map((r: { id: string; relevancia: number; motivo: string }) => ({
-        ...builderMap.get(r.id),
+      .map((r: { slug: string; relevancia: number; motivo: string }) => ({
+        ...builderMap.get(r.slug),
         ai_relevancia: r.relevancia,
         ai_motivo: r.motivo,
       }));
