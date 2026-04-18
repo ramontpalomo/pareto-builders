@@ -117,21 +117,28 @@ export async function POST(req: Request) {
 
   for (const u of DEMO_USERS) {
     try {
-      // 1) Procurar usuário pelo email (listUsers com filter)
-      const { data: list } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 200 })
-      const existing = list?.users?.find(x => x.email === u.email)
+      // 1) Buscar user_id via profiles (mais confiável que listUsers durante boot)
+      const { data: profile } = await adminClient
+        .from('profiles')
+        .select('user_id')
+        .eq('email', u.email)
+        .maybeSingle()
 
-      let userId: string | undefined = existing?.id
+      let userId: string | undefined = profile?.user_id
 
       if (userId) {
-        // Atualizar senha + metadata
-        await adminClient.auth.admin.updateUserById(userId, {
+        // Atualizar senha + metadata via Admin API
+        const { error: updErr } = await adminClient.auth.admin.updateUserById(userId, {
           password: u.password,
           email_confirm: true,
           user_metadata: { role: u.role, full_name: u.full_name, slug: u.slug },
         })
+        if (updErr) {
+          results.push({ email: u.email, step: 'updateUserById', error: updErr.message })
+          continue
+        }
       } else {
-        // Criar usuário
+        // Criar usuário (caso não exista nem em profiles nem em auth)
         const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
           email: u.email,
           password: u.password,
